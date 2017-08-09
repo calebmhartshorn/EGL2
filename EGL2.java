@@ -1,15 +1,24 @@
-
-import java.awt.Dimension;
+import java.awt.*;
+import java.awt.geom.Ellipse2D;
+import java.awt.geom.RectangularShape;
+//import java.awt.Dimension;
 import java.util.ArrayList;
+import java.util.List;
+
 import javax.swing.*;
 
-public class EGL2 extends JPanel{
+public class EGL2 extends JPanel {
 
 	// ArrayList of JFrames
 	private static ArrayList<JFrame> frames = new ArrayList<JFrame>();
+	private static JLabel label;
 	
 	// Active window. Any methods will function on this window.
 	private static int activeWindow = 0;
+	
+	// Lists to store all the shapes that are drawn on the screen
+	private static List<Shape> drawingComponent = new ArrayList<Shape>();
+	private static List<Shape> filledDrawingComponent = new ArrayList<Shape>();
 
 	// Initiates EGL2 and sets up and displays window
 	// Must call init() to use any other EGL2 methods
@@ -40,6 +49,11 @@ public class EGL2 extends JPanel{
 	// Private method show window
 	private static void makeVisible() {
 		
+		// Make a new instance of Draw class & add to frame
+		// This will draw every shape on the screen
+		Draw dc = new Draw();
+		frames.get(activeWindow).add(dc);
+		
 		// Pack and make visible
 		frames.get(activeWindow).pack();
 		frames.get(activeWindow).setVisible(true);
@@ -55,11 +69,13 @@ public class EGL2 extends JPanel{
 		activeWindow = frames.size();
 		
 		// Create window
-		EGL2 panel = new EGL2();
-		panel.setPreferredSize(new Dimension(windowWidth, windowHeight));
-		frames.add(new JFrame("EGL2 Window - " + activeWindow));
-		frames.get(activeWindow).getContentPane().add(panel);
+		frames.add(new JFrame("EGL2 Window"));
 		frames.get(activeWindow).setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+		label = new JLabel();
+		frames.get(activeWindow).setMinimumSize(new Dimension(windowWidth, windowHeight));
+		label.setPreferredSize(new Dimension(windowWidth, windowHeight));
+		//frame.getContentPane().add(label, BorderLayout.PAGE_START);
+		frames.get(activeWindow).getContentPane().add(label);
 	}
 
 	// Closes active window
@@ -175,5 +191,83 @@ public class EGL2 extends JPanel{
 
 			return 0;
 		}
+	}
+	
+	static class Draw extends JComponent {
+		
+		/*
+		 * paintComponent draws all shapes on the screen (automatically,
+		 * does not need to be called) using the drawingComponent List
+		 * which holds every shape that is created using any of the following
+		 * methods
+		 */
+		
+		public void paintComponent(Graphics g) {
+			
+			Graphics2D g2 = (Graphics2D) g;
+			
+			// Draw all the "non-filled" components
+			for (int i = 0; i < drawingComponent.size(); i++) {
+				
+				Object thisShape = drawingComponent.get(i);
+				
+				g2.draw((Shape) thisShape);
+				
+			}
+			
+			// Draw all filled components from the List
+			for (int i = 0; i < filledDrawingComponent.size(); i++) {
+				
+				Object thisFilledShape = filledDrawingComponent.get(i);
+				
+				g2.fill((Shape) thisFilledShape);
+			}
+			
+		}
+		
+		/*
+		 * The following methods are used to create new shapes
+		 * which are added to the drawingComponent List and then
+		 * are all drawin in the paintComponent method
+		 * 
+		 * boolean filled controls which list the shape is added to,
+		 * either the filled components or non-filled components
+		 */
+		
+		public static Rectangle rect(int x, int y, int w, int h, boolean filled) {
+			
+			Rectangle rect = new Rectangle(x, y, w, h);
+			
+			if (filled) {
+				filledDrawingComponent.add(rect);
+			} else {
+				drawingComponent.add(rect);
+			}
+			
+			return rect;
+		}
+		
+		public static void circle(int x, int y, int r, boolean filled) {
+			
+			Ellipse2D.Double circle = new Ellipse2D.Double(x, y, r * 2, r * 2);
+			
+			if (filled) {
+				filledDrawingComponent.add(circle);
+			} else {
+				drawingComponent.add(circle);
+			}
+		}
+		
+		public static void oval(int x, int y, int w, int h, boolean filled) {
+			
+			Ellipse2D.Double oval = new Ellipse2D.Double(x, y, w, h);
+			
+			if (filled) {
+				filledDrawingComponent.add(oval);
+			} else {
+				drawingComponent.add(oval);
+			}
+		}
+		
 	}
 }
