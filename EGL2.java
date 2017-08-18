@@ -1,23 +1,64 @@
-
-import java.awt.Dimension;
+import java.awt.*;
+import java.awt.geom.Ellipse2D;
+import java.awt.geom.RectangularShape;
+//import java.awt.Dimension;
 import java.util.ArrayList;
+import java.util.List;
+import java.util.*;
+import java.awt.event.*;
 import javax.swing.*;
 
-public class EGL2 extends JPanel{
-
+public class EGL2 extends JPanel {
+	
 	// ArrayList of JFrames
 	private static ArrayList<JFrame> frames = new ArrayList<JFrame>();
+	private static JLabel label;
 	
 	// Active window. Any methods will function on this window.
 	private static int activeWindow = 0;
+	
+	// Lists to store all the shapes that are drawn on the screen
+	private static List<Shape> drawingComponent = new ArrayList<Shape>();
+	private static List<Shape> filledDrawingComponent = new ArrayList<Shape>();
+	
+	// Array of keys that can be pressed
+	private static String[] keysArray = {"a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o",
+									"p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z"
+									};
+	
+	// HashMap where keys are elements from the keysArray, and values are booleans
+	// that show whether the key is currently being pressed (true) or not (false)
+	private static HashMap<String, Boolean> keysMap = new HashMap<String, Boolean>();
+	
+	// keyEventsArray is an array of each keyEvent (corresponds to the elements of the keysArray
+	// Used for checking if the key has been pressed or released
+	private static int[] keyEventsArray = {KeyEvent.VK_A, KeyEvent.VK_B, KeyEvent.VK_C, KeyEvent.VK_D, KeyEvent.VK_E,
+			KeyEvent.VK_F, KeyEvent.VK_G, KeyEvent.VK_H, KeyEvent.VK_I, KeyEvent.VK_J, KeyEvent.VK_K, KeyEvent.VK_L,
+			KeyEvent.VK_M, KeyEvent.VK_N, KeyEvent.VK_O, KeyEvent.VK_P, KeyEvent.VK_Q, KeyEvent.VK_R, KeyEvent.VK_S,
+			KeyEvent.VK_T, KeyEvent.VK_U, KeyEvent.VK_V, KeyEvent.VK_W, KeyEvent.VK_X, KeyEvent.VK_Y, KeyEvent.VK_Z, 
+										};
+	
+	// addKeys loops through each key in the keysArray and adds it to the key
+	// HashMap and automatically sets the value to false (not being pressed)
+	
+	private static void addKeys() {
+		
+		for (int i = 0; i < keysArray.length; i++) {
+			
+			keysMap.put(keysArray[i], false);
+		}
+	}
 
 	// Initiates EGL2 and sets up and displays window
 	// Must call init() to use any other EGL2 methods
 	//
 	// Parameter "windowWidth" equal to number of pixels horizontal inside frame
 	// Parameter "windowHeight" equal to number of pixels vertical inside frame
+	
 	public static void init(int windowWidth, int windowHeight) {
-
+			// Add keys to keyMap first
+			addKeys();
+			
 			// Setup and make visible
 			setupJFrame(windowWidth, windowHeight);
 			makeVisible();
@@ -40,6 +81,11 @@ public class EGL2 extends JPanel{
 	// Private method show window
 	private static void makeVisible() {
 		
+		// Make a new instance of Draw class & add to frame
+		// This will draw every shape on the screen
+		Draw dc = new Draw();
+		frames.get(activeWindow).add(dc);
+		
 		// Pack and make visible
 		frames.get(activeWindow).pack();
 		frames.get(activeWindow).setVisible(true);
@@ -55,11 +101,55 @@ public class EGL2 extends JPanel{
 		activeWindow = frames.size();
 		
 		// Create window
-		EGL2 panel = new EGL2();
-		panel.setPreferredSize(new Dimension(windowWidth, windowHeight));
-		frames.add(new JFrame("EGL2 Window - " + activeWindow));
-		frames.get(activeWindow).getContentPane().add(panel);
+		frames.add(new JFrame("EGL2 Window"));
 		frames.get(activeWindow).setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+		// If user closes the last window, this will terminate the program
+		// Rather than only disposing of the window.
+		// Without this, a while (true) loop will keep running
+		if (frames.size() == 1) {
+			frames.get(activeWindow).setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		}
+		label = new JLabel();
+		frames.get(activeWindow).setMinimumSize(new Dimension(windowWidth, windowHeight));
+		label.setPreferredSize(new Dimension(windowWidth, windowHeight));
+		//frame.getContentPane().add(label, BorderLayout.PAGE_START);
+		frames.get(activeWindow).getContentPane().add(label);
+		
+		/*
+		 * Add a key listener to the frame
+		 * 
+		 * keyPressed and Released loop through each key/value pair in the
+		 * keysMap and set the value to either true/false based on the event that occurred
+		 */
+		
+		frames.get(activeWindow).addKeyListener(new KeyListener() {
+			
+			// Changes the value of any key pressed to true
+			public void keyPressed(KeyEvent e) {
+				
+				for (int i = 0; i < keyEventsArray.length; i++) {
+					
+					if (e.getKeyCode() == keyEventsArray[i]) {
+						
+						keysMap.put(keysArray[i], true);
+					}
+				}				
+			}
+			// keyTyped is required else program will not run
+			public void keyTyped(KeyEvent e) {}
+			
+			// Changes the value of any key released to false
+			public void keyReleased(KeyEvent e) {
+				
+				for (int i = 0; i < keyEventsArray.length; i++) {
+					
+					if (e.getKeyCode() == keyEventsArray[i]) {
+						
+						keysMap.put(keysArray[i], false);
+					}
+				}
+			}
+		});
 	}
 
 	// Closes active window
@@ -171,9 +261,150 @@ public class EGL2 extends JPanel{
 		if (activeWindow < frames.size()) {
 			
 			return frames.get(activeWindow).getComponent(0).getHeight();
+			
 		} else {
 
 			return 0;
 		}
 	}
+	
+	// Return the window's x coordinate in pixels on the screen
+	public static int getWindowX() {
+
+		if (activeWindow < frames.size()) {
+			
+			return frames.get(activeWindow).getX();
+			
+		} else {
+
+			return 0;
+		}
+	}
+	
+	// Returns the window's y coordinate in pixels on the screen
+	public static int getWindowY() {
+
+		if (activeWindow < frames.size()) {
+			
+			return frames.get(activeWindow).getY();
+			
+		} else {
+
+			return 0;
+		}
+	}
+	
+	// Method to keep a steady fps and update screen
+	public static void update(int fps) {
+		
+		if (fps <= 0) {
+			fps = 60;
+		}
+		
+		try {
+			// Thread sleeps for 1 second / fps
+			Thread.sleep((long)(1000.0 / fps));
+		}
+		catch (InterruptedException e) {}
+	}
+	
+	// This is the function the user will use for key events
+	public static boolean getKeyDown(String key) {
+			
+		// User enters a string as a parameter
+		// The parameter is a key in the keysMap
+		
+		// If the value of this key is true, getKeyDown returns
+		// true for that key
+		if (keysMap.get(key)) {
+				
+			return true;
+		} else {
+				
+			return false;
+		}		
+	}
+	
+	public static class Draw extends JComponent {
+		
+		/*
+		 * paintComponent draws all shapes on the screen (automatically,
+		 * does not need to be called) using the drawingComponent List
+		 * which holds every shape that is created using any of the following
+		 * methods
+		 */
+		
+		public void paintComponent(Graphics g) {
+			
+			Graphics2D g2 = (Graphics2D) g;
+			
+			// Draw all the "non-filled" components
+			for (int i = 0; i < drawingComponent.size(); i++) {
+				
+				Object thisShape = drawingComponent.get(i);
+				
+				g2.draw((Shape) thisShape);
+				
+			}
+			
+			// Draw all filled components from the List
+			for (int i = 0; i < filledDrawingComponent.size(); i++) {
+				
+				Object thisFilledShape = filledDrawingComponent.get(i);
+				
+				g2.fill((Shape) thisFilledShape);
+			}
+			repaint();
+		}
+		
+		/*
+		 * The following methods are used to create new shapes
+		 * which are added to the drawingComponent List and then
+		 * are all drawin in the paintComponent method
+		 * 
+		 * boolean filled controls which list the shape is added to,
+		 * either the filled components or non-filled components
+		 */
+		
+		public static Rectangle rect(int x, int y, int w, int h, boolean filled) {
+			
+			Rectangle rect = new Rectangle(x, y, w, h);
+			
+			if (filled) {
+				filledDrawingComponent.add(rect);
+			} else {
+				drawingComponent.add(rect);
+			}
+			
+			return rect;
+		}
+		
+		public static Ellipse2D circle(int x, int y, int r, boolean filled) {
+			
+			Ellipse2D.Double circle = new Ellipse2D.Double(x, y, r * 2, r * 2);
+			
+			if (filled) {
+				filledDrawingComponent.add(circle);
+			} else {
+				drawingComponent.add(circle);
+			}
+			
+			return circle;
+		}
+		
+		public static Ellipse2D.Double oval(int x, int y, int w, int h, boolean filled) {
+			
+			Ellipse2D.Double oval = new Ellipse2D.Double(x, y, w, h);
+			
+			if (filled) {
+				filledDrawingComponent.add(oval);
+			} else {
+				drawingComponent.add(oval);
+			}
+			
+			return oval;
+		}
+		
+	}
+	
 }
