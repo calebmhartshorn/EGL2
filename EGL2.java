@@ -1,12 +1,15 @@
 import java.awt.*;
-import java.awt.geom.Ellipse2D;
+//import java.awt.geom.Ellipse2D;
 //import java.awt.geom.RectangularShape;
 //import java.awt.Dimension;
 import java.util.ArrayList;
-import java.util.List;
+//import java.util.List;
 import java.util.*;
 import java.awt.event.*;
 import javax.swing.*;
+import java.util.concurrent.CopyOnWriteArrayList;
+
+//import DrawingTest.PaintPanel;
 
 /**
  * <code>The most epic of graphics libraries</code>
@@ -14,21 +17,24 @@ import javax.swing.*;
  * @author Ben Paulson
  * @author Caleb Hartshorn
  */
-public class EGL2 extends JPanel {
+public class EGL2 { // No longer extends JPanel. Instead is used to manage frames.
+					// Panel is made to draw shapes on.
 	
-	// Not sure why
-	private static final long serialVersionUID = 1L;
+	public static EGL2 egl2;
+	public static Color BLACK = new Color(0, 0, 0);
+	public static Color BLUE = new Color(0, 0, 255);
 	
 	// ArrayList of JFrames
-	private static ArrayList<JFrame> frames = new ArrayList<JFrame>();
-	private static JLabel label;
+	protected static ArrayList<JFrame> frames = new ArrayList<JFrame>();
 	
 	// Active window. Any methods will function on this window.
-	private static int activeWindow = 0;
+	protected static int activeWindow = 0;
 	
-	// Lists to store all the shapes that are drawn on the screen
-	private static List<Shape> drawingComponent = new ArrayList<Shape>();
-	private static List<Shape> filledDrawingComponent = new ArrayList<Shape>();
+	// No longer need filled/drawingComponent arraylists
+	
+	// Need to use CopyOnWriteArrayList to avoid ConcurrentModificationException
+	protected static CopyOnWriteArrayList<Rectangle> rects = new CopyOnWriteArrayList<Rectangle>();
+	protected static CopyOnWriteArrayList<Circle> circles = new CopyOnWriteArrayList<Circle>();
 
 	
 	private static int FPS;
@@ -61,7 +67,7 @@ public class EGL2 extends JPanel {
 			keysMap.put(keysArray[i], false);
 		}
 	}
-	
+
 	/**
 	 * <code>public static void init(int windowWidth, int windowHeight)</code></br></br>
 	 * 
@@ -101,14 +107,17 @@ public class EGL2 extends JPanel {
 	// Private method show window
 	private static void makeVisible() {
 		
-		// Make a new instance of Draw class & add to frame
-		// This will draw every shape on the screen
-		Draw dc = new Draw();
-		frames.get(activeWindow).add(dc);
+		// No longer need to add Draw class to the frame because
+		// shapes are not drawn in this class.
 		
-		// Pack and make visible
-		frames.get(activeWindow).pack();
-		frames.get(activeWindow).setVisible(true);
+		/*Make a new instance of Draw class & add to frame
+		This will draw every shape on the screen
+		Draw dc = new Draw();
+		frames.get(activeWindow).add(dc);*/
+		
+		// Pack and make visible (now in EGL2Window class)
+		//frames.get(activeWindow).pack();
+		//frames.get(activeWindow).setVisible(true);
 		
 		// Default location centered
 		frames.get(activeWindow).setLocationRelativeTo(null);
@@ -121,7 +130,8 @@ public class EGL2 extends JPanel {
 		activeWindow = frames.size();
 		
 		// Create window
-		frames.add(new JFrame("EGL2 Window"));
+		//frames.add(new JFrame("EGL2 Window"));
+		frames.add(new EGL2Window(windowWidth, windowHeight));
 		frames.get(activeWindow).setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 		// If user closes the last window, this will terminate the program
 		// Rather than only disposing of the window.
@@ -129,11 +139,12 @@ public class EGL2 extends JPanel {
 		if (frames.size() == 1) {
 			frames.get(activeWindow).setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		}
-		label = new JLabel();
-		frames.get(activeWindow).setMinimumSize(new Dimension(windowWidth, windowHeight));
-		label.setPreferredSize(new Dimension(windowWidth, windowHeight));
+
+
+		// setMinimumSize now in EGL2Window class
+		//label.setPreferredSize(new Dimension(windowWidth, windowHeight));
 		//frame.getContentPane().add(label, BorderLayout.PAGE_START);
-		frames.get(activeWindow).getContentPane().add(label);
+		//frames.get(activeWindow).getContentPane().add(panel);
 		
 		/*
 		 * Add a key listener to the frame
@@ -355,6 +366,15 @@ public class EGL2 extends JPanel {
 	 */
 	public static void update(int fps) {
 		
+		/*int newRects = rects.size() - numRects;
+		
+		if (newRects > 0) {
+			frames.get(activeWindow).getContentPane().removeAll();
+			DrawPanel drawables = new DrawPanel();
+			frames.get(activeWindow).getContentPane().add(drawables, BorderLayout.CENTER);
+			frames.get(activeWindow).pack();
+		}*/
+		
 		if (fps <= 0) {
 			fps = 60;
 		}
@@ -406,6 +426,12 @@ public class EGL2 extends JPanel {
 	private static void setFPS(int fPS) {
 		FPS = fPS;
 	}
+	
+	/*public void paint(Graphics2D g) {
+		//g.setColor(Color.WHITE);
+		//g.fillRect(0, 0, 1000, 1000);
+		repaint();
+	}*/
 
 	
 	/**
@@ -418,35 +444,7 @@ public class EGL2 extends JPanel {
 		// Still not sure why, but I don't like warnings
 		private static final long serialVersionUID = 1L;
 
-		/*
-		 * paintComponent draws all shapes on the screen (automatically,
-		 * does not need to be called) using the drawingComponent List
-		 * which holds every shape that is created using any of the following
-		 * methods
-		 */
-		
-		public void paintComponent(Graphics g) {
-			
-			Graphics2D g2 = (Graphics2D) g;
-			
-			// Draw all the "non-filled" components
-			for (int i = 0; i < drawingComponent.size(); i++) {
-				
-				Object thisShape = drawingComponent.get(i);
-				
-				g2.draw((Shape) thisShape);
-				
-			}
-			
-			// Draw all filled components from the List
-			for (int i = 0; i < filledDrawingComponent.size(); i++) {
-				
-				Object thisFilledShape = filledDrawingComponent.get(i);
-				
-				g2.fill((Shape) thisFilledShape);
-			}
-			repaint();
-		}
+		// Old paintComponent()
 		
 		/*
 		 * The following methods are used to create new shapes
@@ -467,20 +465,11 @@ public class EGL2 extends JPanel {
 		 * @param filled true if filled, false if not
 		 * @return The new Rectangle object
 		 */
-		public static Rectangle rect(int x, int y, int w, int h, boolean filled) {
+		public static Rectangle rect(int x, int y, int w, int h, boolean filled, Color color) {
 			
 			// User cannot access the Rectangle constructor - they need to use the rect method
 			// to create a new rectangle
-			Rectangle rect = new Rectangle(x, y, w, h, filled, filledDrawingComponent, drawingComponent);
-			
-			// Has been moved to Rectangle class below - no longer needed here.
-			// User can now create rectangles without importing java.awt.Rectangle
-			/*if (filled) {
-				filledDrawingComponent.add(rect);
-			} else {
-				drawingComponent.add(rect);
-			}*/
-			
+			Rectangle rect = new Rectangle(x, y, w, h, filled, color);
 			return rect;
 		}
 		
@@ -494,10 +483,10 @@ public class EGL2 extends JPanel {
 		 * @param filled true if filled, false if not
 		 * @return The new Circle object
 		 */
-		public static Circle circle(int x, int y, int w, int h, boolean filled) {
+		public static Circle circle(int x, int y, int w, int h, boolean filled, Color color) {
 			
-			Circle newCircle = new Circle(x, y, w, h, filled, filledDrawingComponent, drawingComponent);
-			
+			// Does the same thing as rect()
+			Circle newCircle = new Circle(x, y, w, h, filled, color);
 			return newCircle;
 		}
 		
@@ -508,41 +497,52 @@ public class EGL2 extends JPanel {
 // So that the user does not need to import java.awt.geom.Ellipse2D.Double to create
 // a Circle object
 /**
- * Class used for creating new Circle objects
+ * Class used for creating new Circle objects.
+ * The circle's x, y, width, and height variables
+ * are mutable.</br></br>
+ * 
+ * Example:</br>
+ * <code>circle.x += 4;</code>
  */
-class Circle extends EGL2 {
+class Circle {
 	
-	// I don't know
-	private static final long serialVersionUID = 1L;
-	
-	// The shape is actually an Ellipse2D.Double, but since it is
-	// in the Circle class, the user can use it as type Circle
-	static Ellipse2D.Double thisShape;
+	boolean filled;
+	Color color;
+	int x, y, w, h;
 		
-	// Constructor not accessible to user, need to use circle method in Draw class
-	public Circle(int x, int y, int w, int h, boolean filled, List<Shape> filledDrawingComponent, List<Shape> drawingComponent) {
+	/**
+	 * <code>public Circle(int _x, int _y, int _w, int _h, boolean fill, Color _color)</code></br></br>
+	 * This constructor can be used to create a new circle. It will
+	 * operate the same as the EGL2.Draw.circle() method
+	 * @param _x coordinate
+	 * @param _y coordinate
+	 * @param _w width of circle
+	 * @param _h height of circle
+	 * @param fill will be filled in if true, outlined if false
+	 * @param _color color of the circle
+	 */
+	public Circle(int _x, int _y, int _w, int _h, boolean fill, Color _color) {
 			
-		thisShape = new Ellipse2D.Double(x, y, w, h);
-			
-		// Draw it
-		if (filled) {
-			filledDrawingComponent.add(thisShape);
-		} else {
-			drawingComponent.add(thisShape);
-		}
+		super();
+		color = _color;
+		filled = fill;
+		x = _x;
+		y = _y;
+		w = _w;
+		h = _h;
+		
+		// Add this object to list of circles, to be drawn later
+		EGL2.circles.add(this);
 			
 	}
 	
 	/**
-	 * <code>public void translate(int x, int y)</code></br></br>
-	 * Moves the object across the screen speeds and direction indicated by parameters
-	 * @param x direction (sign) and speed at which to move in the x direction
-	 * @param y direction (sign) and speed at which to move in the y direction
+	 * <code>public void setColor(Color c)</code></br></br>
+	 * Change the color of the circle
+	 * @param c - Color to change to
 	 */
-	public void translate(int x, int y) {
-		int currentFPS = getFPS();
-		thisShape.x += x / currentFPS;
-		thisShape.y += y / currentFPS;
+	public void setColor(Color c) {
+		color = c;
 	}
 		
 }
@@ -550,40 +550,118 @@ class Circle extends EGL2 {
 // So that the user does not need to import java.awt.Rectangle to create
 // a Rectangle object
 /**
- * Class used for creating new Rectangle objects
+ * Class used for creating new Rectangle objects.
+ * The rectangle's x, y, width, and height variables
+ * are mutable.</br></br>
+ * 
+ * Example:</br>
+ * <code>rect.x += 4;</code>
  */
-class Rectangle extends EGL2 {
+class Rectangle {
 	
-	// still here
-	private static final long serialVersionUID = 1L;
+	boolean filled;
+	Color color;
+	int x, y, w, h;
 	
-	// The shape is actually a java.awt.Rectangle, but since it is
-	// in the Rectangle class, the user can use it as type Rectangle without importing java.awt.Rectangle
-	static java.awt.Rectangle thisShape;
-	
-	// Constructor not accessible to user, need to use rect method in Draw class
-	public Rectangle(int x, int y, int w, int h, boolean filled, List<Shape> filledDrawingComponent, List<Shape> drawingComponent) {
+	/**
+	 * <code>public Rectangle(int _x, int _y, int _w, int _h, boolean fill, Color _color)</code></br></br>
+	 * This constructor can be used to create a new rectangle. It will
+	 * operate the same as the EGL2.Draw.rect() method
+	 * @param _x coordinate
+	 * @param _y coordinate
+	 * @param _w width of rectangle
+	 * @param _h height of rectangle
+	 * @param fill will be filled in if true, outlined if false
+	 * @param _color color of the rectangle
+	 */
+	public Rectangle(int _x, int _y, int _w, int _h, boolean fill, Color _color) {
+		super();
+		filled = fill;
+		color = _color;
+		x = _x;
+		y = _y;
+		w = _w;
+		h = _h;
 		
-		thisShape = new java.awt.Rectangle(x, y, w, h);
-		
-		// Draw the shape
-		if (filled) {
-			filledDrawingComponent.add(thisShape);
-		} else {
-			drawingComponent.add(thisShape);
-		}
+		// Add to list of rects, to be drawn later
+		EGL2.rects.add(this);
 	}
 	
 	/**
-	 * <code>public void translate(int x, int y)</code></br></br>
-	 * Moves the object across the screen speeds and direction indicated by parameters
-	 * @param x direction (sign) and speed at which to move in the x direction
-	 * @param y direction (sign) and speed at which to move in the y direction
+	 * <code>public void setColor(Color c)</code></br></br>
+	 * Changes the color of the rectangle
+	 * @param c - Color to change to
 	 */
-	public void translate(int x, int y) {
-		int currentFPS = getFPS();
-		thisShape.x += x / currentFPS;
-		thisShape.y += y / currentFPS;
+	public void setColor(Color c) {
+		color = c;
+	}
+	
+}
+
+/**
+ * This class is the panel that all the shapes are drawn on.
+ * Do not use this class. To create a new shape, use the EGL2.Draw
+ * class instead.
+ */
+class DrawPanel extends JPanel {
+	
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
+
+	/**
+	 * Should not be called. This method updates shapes. To create a new shape,
+	 * use the EGL2.Draw class instead
+	 */
+	public void paintComponent(Graphics g) {
+		
+		super.paintComponent(g);
+		Graphics2D g2 = (Graphics2D) g;
+		
+		for (Rectangle rect : EGL2.rects) {
+			g2.setColor(rect.color);
+			g2.fillRect(rect.x, rect.y, rect.w, rect.h);
+		}
+		
+		for (Circle circ : EGL2.circles) {
+			g2.setColor(circ.color);
+			g2.fillOval(circ.x, circ.y, circ.w, circ.h);
+		}
+		
+		repaint();
+	}
+}
+
+/**
+ * This class creates a new EGL2 window. Although it can be used,
+ * it is recommended to use the EGL2.init() method instead.
+ */
+class EGL2Window extends JFrame {
+	
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
+
+	/**
+	 * Can be used to create a new window, but it is recommended
+	 * to use EGL2.init() instead.
+	 * @param windowWidth width of the new window
+	 * @param windowHeight height of the new window
+	 */
+	public EGL2Window(int windowWidth, int windowHeight) {
+		// was in setupJFrame()
+        setMinimumSize(new Dimension(windowWidth, windowHeight));
+        // Adds the shapes to the window
+        DrawPanel drawables = new DrawPanel();
+        getContentPane().add(drawables, BorderLayout.CENTER);
+        // was in makeVisible()
+        pack();
+        setVisible(true);
+        // Default title, can be changed using setTitle()
+        setTitle("EGL2 Window");
+        
 	}
 	
 }
