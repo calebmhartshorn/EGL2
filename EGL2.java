@@ -6,6 +6,10 @@ import java.util.ArrayList;
 //import java.util.List;
 import java.util.*;
 import java.awt.event.*;
+import java.awt.image.BufferedImage;
+import java.io.IOException;
+
+import javax.imageio.ImageIO;
 import javax.swing.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 
@@ -37,6 +41,7 @@ public class EGL2 { // No longer extends JPanel. Instead is used to manage frame
 	protected static CopyOnWriteArrayList<Circle> circles = new CopyOnWriteArrayList<Circle>();
 	protected static CopyOnWriteArrayList<Line> lines = new CopyOnWriteArrayList<Line>();
 	protected static CopyOnWriteArrayList<Gradient> gradients = new CopyOnWriteArrayList<Gradient>();
+	protected static CopyOnWriteArrayList<Image> images = new CopyOnWriteArrayList<Image>();
 
 	
 	private static int FPS;
@@ -502,6 +507,7 @@ public class EGL2 { // No longer extends JPanel. Instead is used to manage frame
 		 * @param y1 starting y coordinate
 		 * @param y2 ending y coordinate
 		 * @param color The color to use when drawing the line
+		 * @return the new line object
 		 */
 		public static Line line(int x1, int y1, int x2, int y2, Color color) {
 			
@@ -527,12 +533,27 @@ public class EGL2 { // No longer extends JPanel. Instead is used to manage frame
 		 * @param _shape String which determines the type of shape that will be drawn.
 		 * 			It must be either "rectangle" or "circle". If it is not one of
 		 * 			these, the shape will not be drawn.
+		 * @return the new gradient object
 		 */
 		public static Gradient gradient(int _x, int _y, int _w, int _h, int _x1, int _y1, Color _color1,
 										int _x2, int _y2, Color _color2, boolean _repeat, String _shape) {
 			
 			Gradient newGradient = new Gradient(_x, _y, _w, _h, _x1, _y1, _color1, _x2, _y2, _color2, _repeat, _shape);
 			return newGradient;
+		}
+		
+		/**
+		 * <code>public static Image image(int x, int y, String filepath)</code></br></br>
+		 * Used to create a new image on the screen.
+		 * @param x coordinate
+		 * @param y coordinate
+		 * @param filepath path to the image
+		 * @return the new image
+		 */
+		public static Image image(int x, int y, String filepath) {
+			
+			Image newImage = new Image(x, y, filepath);
+			return newImage;
 		}
 		
 	}
@@ -1010,6 +1031,61 @@ class Gradient {
 }
 
 /**
+ * Class used to create and draw images to
+ * the screen.
+ */
+class Image {
+	
+	int x, y, w = -1, h = -1;
+	String filepath;
+	
+	/**
+	 * <code>public Image(int _x, int _y, String _filepath)</code></br></br>
+	 * Used to create a new image on the screen. Works the same as EGL2.Draw.image
+	 * @param _x coordinate
+	 * @param _y coordinate
+	 * @param _filepath path to the image
+	 */
+	public Image(int _x, int _y, String _filepath) {
+		
+		x = _x;
+		y = _y;
+		filepath = _filepath;
+		
+		EGL2.images.add(this);
+	}
+	
+	/**
+	 * <code>public void translate(int dx, int dy)</code></br></br>
+	 * Used to move the image around the screen
+	 * @param dx Change in x
+	 * @param dy Change in y
+	 */
+	public void translate(int dx, int dy) {
+		
+		x += dx / 60;
+		y += dy / 60;
+	}
+	
+	/**
+	 * <code>public void distort(int widthAmount, int heightAmount)</code></br></br>
+	 * Adjusts the width and height of the image. Can also be used to enlarge
+	 * or shrink the image while maintaining its proportions.
+	 * @param widthAmount amount to change the width
+	 * @param heightAmount amount to change the height
+	 */
+	public void distort(int widthAmount, int heightAmount) {
+		
+		if (w != 0) {
+			w += widthAmount;
+		}
+		if (h != 0) {
+			h += heightAmount;
+		}
+	}
+}
+
+/**
  * This class is the panel that all the shapes are drawn on.
  * Do not use this class. To create a new shape, use the EGL2.Draw
  * class instead.
@@ -1084,6 +1160,25 @@ class DrawPanel extends JPanel {
 				if (grad.shape == "circle") {
 					g2.fillOval(grad.x, grad.y, grad.w, grad.h);
 				}
+			}
+		}
+		
+		// Images
+		for (Image image : EGL2.images) {
+			
+			try {
+				BufferedImage newImage = ImageIO.read(getClass().getResourceAsStream(image.filepath));
+				
+				// Initialize the width if it has no value (w and h start as -1)
+				if (image.w == -1 && image.h == -1) {
+					image.w = newImage.getWidth();
+					image.h = newImage.getHeight();
+				}
+				
+				g2.drawImage(newImage, image.x, image.y, image.w, image.h, null);
+				
+			} catch (IOException e) {
+				e.printStackTrace();
 			}
 		}
 		

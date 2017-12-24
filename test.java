@@ -40,10 +40,11 @@ public class test {
 		Line a = EGL2.Draw.line(60, 80, 90, 110, Color.MAGENTA);
 		Gradient grad = EGL2.Draw.gradient(0, 0, 100, 100, 0, 0, Color.BLUE, 100, 100, Color.RED, true, "circle");
 		Gradient grad1 = EGL2.Draw.gradient(0, 100, 100, 100, 0, 100, Color.BLUE, 100, 100, Color.RED, false, "rectangle");
+		Image im = EGL2.Draw.image(150, 150, "sonicExplosion04.png"); // in bin folder
 		
 		//stuff.x += 500;
 		while (true) {
-			
+			System.out.println(im.w);
 			EGL2.update(60);
 			grad.translate(4, 0);
 			grad1.translate(4, 0);
@@ -52,32 +53,35 @@ public class test {
 			if (thing.x > EGL2.getWindowWidth() / 2) {
 				thing.hide();
 			}
-			System.out.println(EGL2.getWindowWidth());
+			
 			//stuff.translate(rectSpeed, 0);
 			//yet.x1 += 1;
 			//yet.translate(0, -1);
 			//System.out.println(stuff.color);
 			
 			if (EGL2.getKeyDown("a")) {	
+				if (im.w != 100) {
+					im.distort(-1, 0);
+				}
 				//ConcurrentModificationException used to occur
 				EGL2.Draw.rect(50, 10, 10, 70, true, Color.YELLOW);
 				//stuff.translate(-rectSpeed, 0);
 				//stuff.x += -windowSpeed;
-				stuff.translate(-4, 0);
+				//im.translate(-400, 0);
 				//stuff.setColor(Color.BLACK);
 			}
 			if (EGL2.getKeyDown("d")) {
 				//stuff.translate(rectSpeed, 0);
-				stuff.x += windowSpeed;
+				//im.x += windowSpeed;
 				stuff.setColor(Color.RED);
 			}
 			if (EGL2.getKeyDown("w")) {
 				//stuff.translate(0, -rectSpeed);
-				stuff.y += -windowSpeed;
+				//im.y += -windowSpeed;
 			}
 			if (EGL2.getKeyDown("s")) {
 				//stuff.translate(0, rectSpeed);
-				stuff.y += windowSpeed;
+				//im.y += windowSpeed;
 			}
 			
 			if (EGL2.getKeyDown("j")) {
