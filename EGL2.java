@@ -42,7 +42,12 @@ public class EGL2 { // No longer extends JPanel. Instead is used to manage frame
 	protected static CopyOnWriteArrayList<Line> lines = new CopyOnWriteArrayList<Line>();
 	protected static CopyOnWriteArrayList<Gradient> gradients = new CopyOnWriteArrayList<Gradient>();
 	protected static CopyOnWriteArrayList<Image> images = new CopyOnWriteArrayList<Image>();
-
+	protected static CopyOnWriteArrayList<CopyOnWriteArrayList<Shape>> shapes = new CopyOnWriteArrayList<CopyOnWriteArrayList<Shape>>();
+	
+	/**
+	 * Do not modify!!!!!!!!!!!!! Use EGL2.getNumLayers()
+	 */
+	protected static int numLayers;
 	
 	private static int FPS;
 	//private static long frameRate;
@@ -89,6 +94,10 @@ public class EGL2 { // No longer extends JPanel. Instead is used to manage frame
 			// Add keys to keyMap first
 			addKeys();
 			
+			// Add first layer
+			shapes.add(new CopyOnWriteArrayList<Shape>());
+			numLayers = 1;
+			
 			// Setup and make visible
 			setupJFrame(windowWidth, windowHeight);
 			makeVisible();
@@ -100,12 +109,13 @@ public class EGL2 { // No longer extends JPanel. Instead is used to manage frame
 	 */
 	public static void init() {
 		
+		addKeys();
 		// Setup
 		setupJFrame(640, 360);
 		
 		// Set fullscreen
 		frames.get(activeWindow).setExtendedState(JFrame.MAXIMIZED_BOTH);
-		frames.get(activeWindow).setUndecorated(true);
+		//frames.get(activeWindow).setUndecorated(false); shapes won't draw
 		
 		// Make visible
 		makeVisible();	
@@ -444,6 +454,27 @@ public class EGL2 { // No longer extends JPanel. Instead is used to manage frame
 	}
 	
 	/**
+	 * Adds a layer to which objects can be drawn on. By default,
+	 * there is one layer. Layers start at 0, so if you want an object to be
+	 * drawn on the first layer, you must set its layer to 0. Objects that are
+	 * on the same layer will be drawn in the order in which they are initialized. Objects
+	 * in lower layer levels will be drawn before objects with higher layer levels.
+	 */
+	public static void addLayer() {
+		shapes.add(new CopyOnWriteArrayList<Shape>());
+		numLayers++;
+	}
+	
+	/**
+	 * Use this method to get the number of layers currently
+	 * in the window
+	 * @return current number of layers in the window
+	 */
+	public static int getNumLayers() {
+		return numLayers;
+	}
+	
+	/**
 	 * The Draw class is used for drawing shapes to the
 	 * screen. Its methods can be accessed through EGL2.Draw
 	 *
@@ -560,8 +591,6 @@ public class EGL2 { // No longer extends JPanel. Instead is used to manage frame
 	
 }
 
-// So that the user does not need to import java.awt.geom.Ellipse2D.Double to create
-// a Circle object
 /**
  * Class used for creating new Circle objects.
  * The circle's x, y, width, and height variables
@@ -570,11 +599,11 @@ public class EGL2 { // No longer extends JPanel. Instead is used to manage frame
  * Example:</br>
  * <code>circle.x += 4;</code>
  */
-class Circle {
+class Circle extends Shape {
 	
 	boolean filled, visible = true;
 	Color color;
-	int x, y, w, h;
+	int x, y, w, h, layer = 0;
 		
 	/**
 	 * <code>public Circle(int _x, int _y, int _w, int _h, boolean fill, Color _color)</code></br></br>
@@ -599,7 +628,31 @@ class Circle {
 		
 		// Add this object to list of circles, to be drawn later
 		EGL2.circles.add(this);
+		
+		// Add to the first layer by default
+		EGL2.shapes.get(layer).add(this);
 			
+	}
+	
+	@Override
+	public void setLayer(int _layer) {
+		
+		// Throw error if layer does not exist
+		if (_layer > EGL2.numLayers - 1) {
+			throw new IndexOutOfBoundsException("This layer does not yet exist."
+					+ "\n\tUse EGL2.addLayer() to create an additional layer.");
+		} else if (_layer < 0) {
+			throw new IndexOutOfBoundsException("The layer cannot be negative.");
+		}
+		
+		EGL2.shapes.get(layer).remove(this);
+		layer = _layer;
+		EGL2.shapes.get(layer).add(this);
+	}
+	
+	@Override
+	public int getLayer() {
+		return layer;
 	}
 	
 	/**
@@ -611,31 +664,18 @@ class Circle {
 		color = c;
 	}
 	
-	/**
-	 * <code>public Color getColor()</code></br></br>
-	 * Used to get the current color of the circle
-	 * @return the current color of the circle
-	 */
+	@Override
 	public Color getColor() {
 		return color;
 	}
 	
-	/**
-	 * Moves the circle by the specified amounts
-	 * @param x amount to move on the x axis
-	 * @param y amount to move on the y axis
-	 */
+	@Override
 	public void translate(int dx, int dy) {
 		x += dx;
 		y += dy;
 	}
 	
-	/**
-	 * Will extrude the shape from the center out by the amounts specified in the
-	 * parameters. Can shrink the shape as well using negative parameters.
-	 * @param widthAmount amount to magnify the width by
-	 * @param heightAmount amount to magnify the height by
-	 */
+	@Override
 	public void extrude(int widthAmount, int heightAmount) {
 		// width and height amounts must be multiplied by 2 when adding to w and h
 		// instead of dividing them by 2 when subtracting them from x and y, because
@@ -647,29 +687,143 @@ class Circle {
 		y -= heightAmount;
 	}
 		
-	/**
-	 * <code>public void show()</code></br></br>
-	 * Make the shape visible
-	 */
+	@Override
 	public void show() {
 		visible = true;
 	}
 	
-	/**
-	 * <code>public void hide()</code></br></br>
-	 * Hide the shape
-	 */
+	@Override
 	public void hide() {
 		visible = false;
 	}
 	
-	/**
-	 *<code>public boolean isVisible()</code></br></br>
-	 * Checks whether the shape is visible or not
-	 * @return true if visible, false if not
-	 */
+	@Override
 	public boolean isVisible() {
 		return visible;
+	}
+	
+	@Override
+	public boolean isFilled() {
+		return filled;
+	}
+	
+	@Override
+	public int getX() {
+		return x;
+	}
+	
+	@Override
+	public int getY() {
+		return y;
+	}
+	
+	@Override
+	public int getW() {
+		return w;
+	}
+	
+	@Override
+	public int getH() {
+		return h;
+	}
+	
+	@Override
+	public void setW(int newWidth) {
+		w = newWidth;
+	}
+	
+	@Override
+	public void setH(int newHidth) {
+		w = newHidth;
+	}
+	
+	@Override
+	protected String getFilepath() {
+		return "";
+	}
+	
+	@Override
+	public int getX2() {
+		return 0;
+	}
+	
+	@Override
+	public int getY2() {
+		return 0;
+	}
+	
+	@Override
+	public int getX1() {
+		return 0;
+	}
+	
+	@Override
+	public int getY1() {
+		return 0;
+	}
+	
+	@Override
+	public Color getColor1() {
+		return Color.BLACK;
+	}
+	
+	@Override
+	public Color getColor2() {
+		return Color.BLACK;
+	}
+	
+	@Override
+	public boolean isRepeatable() {
+		return false;
+	}
+	
+	@Override
+	public String getGradientShape() {
+		return "";
+	}
+	
+	@Override
+	public boolean touches(Image imageTested) {
+		
+		if (((imageTested.x >= x && imageTested.x <= x + w) || (imageTested.x <= x + w && imageTested.x + imageTested.w >= x)) &&
+				((imageTested.y >= y && imageTested.y <= y + h) || (imageTested.y <= y + h && imageTested.y + imageTested.h >= y))) {
+			
+			return true;
+		}
+		return false;
+	}
+	
+	@Override
+	public boolean touches(Rectangle rectTested) {
+		
+		if (((rectTested.x >= x && rectTested.x <= x + w) || (rectTested.x <= x + w && rectTested.x + rectTested.w >= x)) &&
+				((rectTested.y >= y && rectTested.y <= y + h) || (rectTested.y <= y + h && rectTested.y + rectTested.h >= y))) {
+			
+			return true;
+		}
+		return false;
+	}
+	
+	@Override
+	public boolean touches(Circle circleTested) {
+		
+		if (((circleTested.x >= x && circleTested.x <= x + w) || (circleTested.x <= x + w && circleTested.x + circleTested.w >= x)) &&
+				((circleTested.y >= y && circleTested.y <= y + h) || (circleTested.y <= y + h && circleTested.y + circleTested.h >= y))) {
+			
+			return true;
+		}
+		return false;
+	}
+	
+	@Override
+	public boolean touches(Gradient gradientTested) {
+		
+		if (((gradientTested.x >= x && gradientTested.x <= x + w) || (gradientTested.x <= x + w && gradientTested.x + gradientTested.w >= x)) &&
+				((gradientTested.y >= y && gradientTested.y <= y + h) || (gradientTested.y <= y + h && gradientTested.y + gradientTested.h >= y))) {
+			
+			return true;
+		}
+		return false;
 	}
 	
 }
@@ -684,11 +838,11 @@ class Circle {
  * Example:</br>
  * <code>rect.x += 4;</code>
  */
-class Rectangle {
+class Rectangle extends Shape {
 	
 	boolean filled, visible = true;
 	Color color;
-	int x, y, w, h;
+	int x, y, w, h, layer = 0;
 	
 	/**
 	 * <code>public Rectangle(int _x, int _y, int _w, int _h, boolean fill, Color _color)</code></br></br>
@@ -712,6 +866,30 @@ class Rectangle {
 		
 		// Add to list of rects, to be drawn later
 		EGL2.rects.add(this);
+		// Add to the first layer by default
+		EGL2.shapes.get(layer).add(this);
+					
+	}
+		
+	@Override
+	public void setLayer(int _layer) {
+		
+		// Throw error if layer does not exist
+		if (_layer > EGL2.numLayers - 1) {
+			throw new IndexOutOfBoundsException("This layer does not yet exist."
+					+ "\n\tUse EGL2.addLayer() to create an additional layer.");
+		} else if (_layer < 0) {
+			throw new IndexOutOfBoundsException("The layer cannot be negative.");
+		}
+		
+		EGL2.shapes.get(layer).remove(this);
+		layer = _layer;
+		EGL2.shapes.get(layer).add(this);
+	}
+	
+	@Override
+	public int getLayer() {
+		return layer;
 	}
 	
 	/**
@@ -723,31 +901,18 @@ class Rectangle {
 		color = c;
 	}
 	
-	/**
-	 * <code>public Color getColor()</code></br></br>
-	 * Used to get the current color of the rectangle
-	 * @return the current color of the rectangle
-	 */
+	@Override
 	public Color getColor() {
 		return color;
 	}
 	
-	/**
-	 * Moves the rectangle by the specified amounts
-	 * @param x amount to move on the x axis
-	 * @param y amount to move on the y axis
-	 */
+	@Override
 	public void translate(int dx, int dy) {
 		x += dx;
 		y += dy;
 	}
 	
-	/**
-	 * Will extrude the shape from the center out by the amounts specified in the
-	 * parameters. Can shrink the shape as well using negative parameters.
-	 * @param widthAmount amount to magnify the width by
-	 * @param heightAmount amount to magnify the height by
-	 */
+	@Override
 	public void extrude(int widthAmount, int heightAmount) {
 		// width and height amounts must be multiplied by 2 when adding to w and h
 		// instead of dividing them by 2 when subtracting them from x and y, because
@@ -759,29 +924,143 @@ class Rectangle {
 		y -= heightAmount;
 	}
 	
-	/**
-	 * <code>public void show()</code></br></br>
-	 * Make the shape visible
-	 */
+	@Override
 	public void show() {
 		visible = true;
 	}
 	
-	/**
-	 * <code>public void hide()</code></br></br>
-	 * Hide the shape
-	 */
+	@Override
 	public void hide() {
 		visible = false;
 	}
 	
-	/**
-	 *<code>public boolean isVisible()</code></br></br>
-	 * Checks whether the shape is visible or not
-	 * @return true if visible, false if not
-	 */
+	@Override
 	public boolean isVisible() {
 		return visible;
+	}
+	
+	@Override
+	public boolean isFilled() {
+		return filled;
+	}
+	
+	@Override
+	public int getX() {
+		return x;
+	}
+	
+	@Override
+	public int getY() {
+		return y;
+	}
+	
+	@Override
+	public int getW() {
+		return w;
+	}
+	
+	@Override
+	public int getH() {
+		return h;
+	}
+	
+	@Override
+	public void setW(int newWidth) {
+		w = newWidth;
+	}
+	
+	@Override
+	public void setH(int newHeight) {
+		h = newHeight;
+	}
+	
+	@Override
+	protected String getFilepath() {
+		return "";
+	}
+	
+	@Override
+	public int getX2() {
+		return 0;
+	}
+	
+	@Override
+	public int getY2() {
+		return 0;
+	}
+	
+	@Override
+	public int getX1() {
+		return 0;
+	}
+	
+	@Override
+	public int getY1() {
+		return 0;
+	}
+	
+	@Override
+	public Color getColor1() {
+		return Color.BLACK;
+	}
+	
+	@Override
+	public Color getColor2() {
+		return Color.BLACK;
+	}
+	
+	@Override
+	public boolean isRepeatable() {
+		return false;
+	}
+	
+	@Override
+	public String getGradientShape() {
+		return "";
+	}
+	
+	@Override
+	public boolean touches(Image imageTested) {
+		
+		if (((imageTested.x >= x && imageTested.x <= x + w) || (imageTested.x <= x + w && imageTested.x + imageTested.w >= x)) &&
+				((imageTested.y >= y && imageTested.y <= y + h) || (imageTested.y <= y + h && imageTested.y + imageTested.h >= y))) {
+			
+			return true;
+		}
+		return false;
+	}
+	
+	@Override
+	public boolean touches(Rectangle rectTested) {
+		
+		if (((rectTested.x >= x && rectTested.x <= x + w) || (rectTested.x <= x + w && rectTested.x + rectTested.w >= x)) &&
+				((rectTested.y >= y && rectTested.y <= y + h) || (rectTested.y <= y + h && rectTested.y + rectTested.h >= y))) {
+			
+			return true;
+		}
+		return false;
+	}
+	
+	@Override
+	public boolean touches(Circle circleTested) {
+		
+		if (((circleTested.x >= x && circleTested.x <= x + w) || (circleTested.x <= x + w && circleTested.x + circleTested.w >= x)) &&
+				((circleTested.y >= y && circleTested.y <= y + h) || (circleTested.y <= y + h && circleTested.y + circleTested.h >= y))) {
+			
+			return true;
+		}
+		return false;
+	}
+	
+	@Override
+	public boolean touches(Gradient gradientTested) {
+		
+		if (((gradientTested.x >= x && gradientTested.x <= x + w) || (gradientTested.x <= x + w && gradientTested.x + gradientTested.w >= x)) &&
+				((gradientTested.y >= y && gradientTested.y <= y + h) || (gradientTested.y <= y + h && gradientTested.y + gradientTested.h >= y))) {
+			
+			return true;
+		}
+		return false;
 	}
 	
 }
@@ -796,7 +1075,7 @@ class Rectangle {
 class Line {
 	
 	Color color;
-	int x1, x2, y1, y2;
+	int x1, x2, y1, y2, layer = 0;
 	boolean visible = true;
 	
 	/**
@@ -880,10 +1159,10 @@ class Line {
 /**
  * Class used to draw gradient rectangles
  */
-class Gradient {
+class Gradient extends Shape {
 	
 	Color color1, color2;
-	int x, y, w, h, x1, x2, y1, y2;
+	int x, y, w, h, x1, x2, y1, y2, layer = 0;
 	boolean repeat, visible = true;
 	String shape;
 	
@@ -922,14 +1201,34 @@ class Gradient {
 		shape = _shape;
 		
 		EGL2.gradients.add(this);
+		
+		// Add to the first layer by default
+		EGL2.shapes.get(layer).add(this);
+					
+	}
+			
+	@Override
+	public void setLayer(int _layer) {
+		
+		// Throw error if layer does not exist
+		if (_layer > EGL2.numLayers - 1) {
+			throw new IndexOutOfBoundsException("This layer does not yet exist."
+						+ "\n\tUse EGL2.addLayer() to create an additional layer.");
+		} else if (_layer < 0) {
+			throw new IndexOutOfBoundsException("The layer cannot be negative.");
+		}
+				
+		EGL2.shapes.get(layer).remove(this);
+		layer = _layer;
+		EGL2.shapes.get(layer).add(this);
 	}
 	
-	/**
-	 * <code>public void translateAll(int dx, int dy)</code></br></br>
-	 * Moves the shape. Will not update the coordinates for the colors.
-	 * @param dx Change in x
-	 * @param dy Change in y
-	 */
+	@Override
+	public int getLayer() {
+		return layer;
+	}
+	
+	@Override
 	public void translate(int dx, int dy) {
 		x += dx;
 		y += dy;
@@ -950,6 +1249,18 @@ class Gradient {
 		y2 += dy;
 	}
 	
+	@Override
+	public void extrude(int widthAmount, int heightAmount) {
+		// width and height amounts must be multiplied by 2 when adding to w and h
+		// instead of dividing them by 2 when subtracting them from x and y, because
+		// if extrude is called with parameters of 1 and 1, the shape will not
+		// grow from the center outward.
+		w += widthAmount * 2.0;
+		h += heightAmount * 2.0;
+		x -= widthAmount;
+		y -= heightAmount;
+	}
+	
 	/**
 	 * <code>public void setColor1(Color color)</code></br></br>
 	 * Used to change the first color of the gradient
@@ -968,11 +1279,7 @@ class Gradient {
 		color2 = color;
 	}
 	
-	/**
-	 * <code>public Color getColor1()</code></br></br>
-	 * Gets the current color of the first part of the gradient
-	 * @return current first color
-	 */
+	@Override
 	public Color getColor1() {
 		return color1;
 	}
@@ -995,38 +1302,138 @@ class Gradient {
 		repeat = repeatable;
 	}
 	
-	/**
-	 * <code>public boolean isRepeatable()</code></br></br>
-	 * Checks whether the gradient color pattern is repeating or not
-	 * @return true if repeating, false if not
-	 */
+	@Override
 	public boolean isRepeatable() {
 		return repeat;
 	}
 	
-	/**
-	 * <code>public void show()</code></br></br>
-	 * Make the shape visible
-	 */
+	@Override
 	public void show() {
 		visible = true;
 	}
 	
-	/**
-	 * <code>public void hide()</code></br></br>
-	 * Hide the shape
-	 */
+	@Override
 	public void hide() {
 		visible = false;
 	}
 	
-	/**
-	 *<code>public boolean isVisible()</code></br></br>
-	 * Checks whether the shape is visible or not
-	 * @return true if visible, false if not
-	 */
+	@Override
 	public boolean isVisible() {
 		return visible;
+	}
+	
+	@Override
+	public boolean isFilled() {
+		return true;
+	}
+	
+	@Override
+	public Color getColor() {
+		return Color.BLACK;
+	}
+	
+	@Override
+	public int getX() {
+		return x;
+	}
+	
+	@Override
+	public int getY() {
+		return y;
+	}
+	
+	@Override
+	public int getW() {
+		return w;
+	}
+	
+	@Override
+	public int getH() {
+		return h;
+	}
+	
+	@Override
+	public void setW(int newWidth) {
+		w = newWidth;
+	}
+	
+	@Override
+	public void setH(int newHeight) {
+		h = newHeight;
+	}
+	
+	@Override
+	protected String getFilepath() {
+		return "";
+	}
+	
+	@Override
+	public int getX2() {
+		return x2;
+	}
+	
+	@Override
+	public int getY2() {
+		return y2;
+	}
+	
+	@Override
+	public int getX1() {
+		return x1;
+	}
+	
+	@Override
+	public int getY1() {
+		return y1;
+	}
+	
+	@Override
+	public String getGradientShape() {
+		return shape;
+	}
+	
+	@Override
+	public boolean touches(Image imageTested) {
+		
+		if (((imageTested.x >= x && imageTested.x <= x + w) || (imageTested.x <= x + w && imageTested.x + imageTested.w >= x)) &&
+				((imageTested.y >= y && imageTested.y <= y + h) || (imageTested.y <= y + h && imageTested.y + imageTested.h >= y))) {
+			
+			return true;
+		}
+		return false;
+	}
+	
+	@Override
+	public boolean touches(Rectangle rectTested) {
+		
+		if (((rectTested.x >= x && rectTested.x <= x + w) || (rectTested.x <= x + w && rectTested.x + rectTested.w >= x)) &&
+				((rectTested.y >= y && rectTested.y <= y + h) || (rectTested.y <= y + h && rectTested.y + rectTested.h >= y))) {
+			
+			return true;
+		}
+		return false;
+	}
+	
+	@Override
+	public boolean touches(Circle circleTested) {
+		
+		if (((circleTested.x >= x && circleTested.x <= x + w) || (circleTested.x <= x + w && circleTested.x + circleTested.w >= x)) &&
+				((circleTested.y >= y && circleTested.y <= y + h) || (circleTested.y <= y + h && circleTested.y + circleTested.h >= y))) {
+			
+			return true;
+		}
+		return false;
+	}
+	
+	@Override
+	public boolean touches(Gradient gradientTested) {
+		
+		if (((gradientTested.x >= x && gradientTested.x <= x + w) || (gradientTested.x <= x + w && gradientTested.x + gradientTested.w >= x)) &&
+				((gradientTested.y >= y && gradientTested.y <= y + h) || (gradientTested.y <= y + h && gradientTested.y + gradientTested.h >= y))) {
+			
+			return true;
+		}
+		return false;
 	}
 }
 
@@ -1034,10 +1441,11 @@ class Gradient {
  * Class used to create and draw images to
  * the screen.
  */
-class Image {
+class Image extends Shape {
 	
-	int x, y, w = -1, h = -1;
+	int x, y, w = -1, h = -1, layer = 0;
 	String filepath;
+	boolean visible = true;
 	
 	/**
 	 * <code>public Image(int _x, int _y, String _filepath)</code></br></br>
@@ -1052,37 +1460,401 @@ class Image {
 		y = _y;
 		filepath = _filepath;
 		
+		/*super.x = x;
+		super.y = y;
+		super.w = w;
+		super.h = h;*/
+		
 		EGL2.images.add(this);
+		
+		// Add to the first layer by default
+		EGL2.shapes.get(layer).add(this);
+					
 	}
+			
+	@Override
+	public void setLayer(int _layer) {
+		
+		// Throw error if layer does not exist
+		if (_layer > EGL2.numLayers - 1) {
+			throw new IndexOutOfBoundsException("This layer does not yet exist."
+					+ "\n\tUse EGL2.addLayer() to create an additional layer.");
+		} else if (_layer < 0) {
+			throw new IndexOutOfBoundsException("The layer cannot be negative.");
+		
+		}
+		EGL2.shapes.get(layer).remove(this);
+		layer = _layer;
+		EGL2.shapes.get(layer).add(this);
+	}
+	
+	@Override
+	public int getLayer() {
+		return layer;
+	}
+	
+	@Override
+	public void translate(int dx, int dy) {
+		
+		x += dx;
+		y += dy;
+	}
+	
+	@Override
+	public void extrude(int widthAmount, int heightAmount) {
+		
+		if (w != 0) {
+			w += widthAmount * 2;
+			x -= widthAmount;
+		}
+		if (h != 0) {
+			h += heightAmount * 2;
+			y -= heightAmount;
+		}
+	}
+	
+	@Override
+	public void show() {
+		visible = true;
+	}
+	
+	@Override
+	public void hide() {
+		visible = false;
+	}
+	
+	@Override
+	public boolean isVisible() {
+		return visible;
+	}
+	
+	@Override
+	public boolean isFilled() {
+		return true;
+	}
+	
+	@Override
+	public Color getColor() {
+		return Color.BLACK;
+	}
+	
+	@Override
+	public int getX() {
+		return x;
+	}
+	
+	@Override
+	public int getY() {
+		return y;
+	}
+	
+	@Override
+	public int getW() {
+		return w;
+	}
+	
+	@Override
+	public int getH() {
+		return h;
+	}
+	
+	@Override
+	public void setW(int newWidth) {
+		w = newWidth;
+	}
+	
+	@Override
+	public void setH(int newHeight) {
+		h = newHeight;
+	}
+	
+	protected String getFilepath() {
+		return filepath;
+	}
+	
+	@Override
+	public int getX2() {
+		return 0;
+	}
+	
+	@Override
+	public int getY2() {
+		return 0;
+	}
+	
+	@Override
+	public int getX1() {
+		return 0;
+	}
+	
+	@Override
+	public int getY1() {
+		return 0;
+	}
+	
+	@Override
+	public Color getColor1() {
+		return Color.BLACK;
+	}
+	
+	@Override
+	public Color getColor2() {
+		return Color.BLACK;
+	}
+	
+	@Override
+	public boolean isRepeatable() {
+		return false;
+	}
+	
+	@Override
+	public String getGradientShape() {
+		return "";
+	}
+	
+	@Override
+	public boolean touches(Image imageTested) {
+		
+		if (((imageTested.x >= x && imageTested.x <= x + w) || (imageTested.x <= x + w && imageTested.x + imageTested.w >= x)) &&
+				((imageTested.y >= y && imageTested.y <= y + h) || (imageTested.y <= y + h && imageTested.y + imageTested.h >= y))) {
+			
+			return true;
+		}
+		return false;
+	}
+	
+	@Override
+	public boolean touches(Rectangle rectTested) {
+		
+		if (((rectTested.x >= x && rectTested.x <= x + w) || (rectTested.x <= x + w && rectTested.x + rectTested.w >= x)) &&
+				((rectTested.y >= y && rectTested.y <= y + h) || (rectTested.y <= y + h && rectTested.y + rectTested.h >= y))) {
+			
+			return true;
+		}
+		return false;
+	}
+	
+	@Override
+	public boolean touches(Circle circleTested) {
+		
+		if (((circleTested.x >= x && circleTested.x <= x + w) || (circleTested.x <= x + w && circleTested.x + circleTested.w >= x)) &&
+				((circleTested.y >= y && circleTested.y <= y + h) || (circleTested.y <= y + h && circleTested.y + circleTested.h >= y))) {
+			
+			return true;
+		}
+		return false;
+	}
+	
+	@Override
+	public boolean touches(Gradient gradientTested) {
+		
+		if (((gradientTested.x >= x && gradientTested.x <= x + w) || (gradientTested.x <= x + w && gradientTested.x + gradientTested.w >= x)) &&
+				((gradientTested.y >= y && gradientTested.y <= y + h) || (gradientTested.y <= y + h && gradientTested.y + gradientTested.h >= y))) {
+			
+			return true;
+		}
+		return false;
+	}
+	
+}
+
+/**
+ * Abstract class which all the drawable object classes
+ * extend. This class makes it possible to create and add objects
+ * to different layers
+ */
+abstract class Shape {	
+	
+	/**
+	 * Tests whether or not the object is touching the rectangle provided in the parameter
+	 * @param rectTested Rectangle to be tested
+	 * @return true if there is an intersection, false if not
+	 */
+	public abstract boolean touches(Rectangle rectTested);
+	
+	/**
+	 * Tests whether or not the object is touching the circle provided in the parameter
+	 * @param circleTested Circle to be tested
+	 * @return true if there is an intersection, false if not
+	 */
+	public abstract boolean touches(Circle circleTested);
+	
+	/**
+	 * Tests whether or not the object is touching the gradient provided in the parameter
+	 * @param gradientTested Gradient to be tested
+	 * @return true if there is an intersection, false if not
+	 */
+	public abstract boolean touches(Gradient gradientTested);
+	
+	/**
+	 * Tests whether or not the object is touching the image provided in the parameter
+	 * @param imageTested Image to be tested
+	 * @return true if there is an intersection, false if not
+	 */
+	public abstract boolean touches(Image imageTested);
+	
+	/**
+	 * <code>public void show()</code></br></br>
+	 * Make the shape visible
+	 */
+	public abstract void show();
+	
+	/**
+	 * <code>public void hide()</code></br></br>
+	 * Hide the shape
+	 */
+	public abstract void hide();
+	
+	/**
+	 *<code>public boolean isVisible()</code></br></br>
+	 * Checks whether the shape is visible or not
+	 * @return true if visible, false if not
+	 */
+	public abstract boolean isVisible();
 	
 	/**
 	 * <code>public void translate(int dx, int dy)</code></br></br>
-	 * Used to move the image around the screen
+	 * Used to move the object around the screen
 	 * @param dx Change in x
 	 * @param dy Change in y
 	 */
-	public void translate(int dx, int dy) {
-		
-		x += dx / 60;
-		y += dy / 60;
-	}
+	public abstract void translate(int dx, int dy);
 	
 	/**
-	 * <code>public void distort(int widthAmount, int heightAmount)</code></br></br>
-	 * Adjusts the width and height of the image. Can also be used to enlarge
-	 * or shrink the image while maintaining its proportions.
-	 * @param widthAmount amount to change the width
-	 * @param heightAmount amount to change the height
+	 * Will extrude the shape from the center out by the amounts specified in the
+	 * parameters. Can shrink the shape as well using negative parameters.
+	 * @param widthAmount amount to magnify the width by
+	 * @param heightAmount amount to magnify the height by
 	 */
-	public void distort(int widthAmount, int heightAmount) {
-		
-		if (w != 0) {
-			w += widthAmount;
-		}
-		if (h != 0) {
-			h += heightAmount;
-		}
-	}
+	public abstract void extrude(int widthAmount, int heightAmount);
+	
+	/**
+	 * Checks whether or not the object is filled
+	 * @return true if filled, false if not
+	 */
+	public abstract boolean isFilled();
+	
+	/**
+	 * Gets the current color of the object. For objects that do not have one color,
+	 * such as images and gradients, this method will always return BLACK
+	 * @return the current color of the object
+	 */
+	public abstract Color getColor();
+	
+	/**
+	 * <code>public int getX()</code></br></br>
+	 * @return Current x coordinate
+	 */
+	public abstract int getX();
+	
+	/**
+	 * <code>public int getY()</code></br></br>
+	 * @return Current y coordinate
+	 */
+	public abstract int getY();
+	
+	/**
+	 * <code>public int getW()</code></br></br>
+	 * @return Current width
+	 */
+	public abstract int getW();
+	
+	/**
+	 * <code>public int getH()</code></br></br>
+	 * @return Current height
+	 */
+	public abstract int getH();
+	
+	/**
+	 * Gets the filepath of the image. Only applicable to images
+	 * @return filepath of the image
+	 */
+	protected abstract String getFilepath();
+	
+	/**
+	 * <code>public int getX1()</code></br></br>
+	 * Only applies to gradients
+	 * @return first x coordinate of gradient. Returns 0 for all other objects
+	 */
+	public abstract int getX1();
+	
+	/**
+	 * <code>public int getY1()</code></br></br>
+	 * Only applies to gradients
+	 * @return first y coordinate of gradient. Returns 0 for all other objects
+	 */
+	public abstract int getY1();
+	
+	/**
+	 * <code>public int getX2()</code></br></br>
+	 * Only applies to gradients
+	 * @return second x coordinate of gradient. Returns 0 for all other objects
+	 */
+	public abstract int getX2();
+	
+	/**
+	 * <code>public int getY2()</code></br></br>
+	 * Only applies to gradients
+	 * @return second y coordinate of gradient. Returns 0 for all other objects
+	 */
+	public abstract int getY2();
+	
+	/**
+	 * <code>public Color getColor1()</code></br></br>
+	 * Only applies to gradients
+	 * @return first color of gradient. Returns BLACK for all other objects
+	 */
+	public abstract Color getColor1();
+	
+	/**
+	 * <code>public Color getColor2()</code></br></br>
+	 * Only applies to gradients
+	 * @return second color of gradient. Returns BLACK for all other objects
+	 */
+	public abstract Color getColor2();
+	
+	/**
+	 * <code>public boolean isRepeatable()</code></br></br>
+	 * Only applies to gradients
+	 * @return true if the gradient color pattern repeats, false if not. Returns false for all objects
+	 * that are not gradients.
+	 */
+	public abstract boolean isRepeatable();
+	
+	/**
+	 * Only applies to gradients
+	 * @return a string containing the type of shape to be drawn. Returns an empty string for
+	 * non-gradient objects
+	 */
+	protected abstract String getGradientShape();
+	
+	/**
+	 * <code>public void setW(int newWidth)</code></br></br>
+	 * Can be used to change the width of the object. Extrude() can also be used
+	 * @param newWidth width to change to.
+	 */
+	public abstract void setW(int newWidth);
+	
+	/**
+	 * <code>public void setH(int newHeight)</code></br></br>
+	 * Can be used to change the height of the object. Extrude() can also be used
+	 * @param newHeight height to change to.
+	 */
+	public abstract void setH(int newHeight);
+	
+	/**
+	 * <code>public void setLayer(int _layer)</code></br></br>
+	 * Sets the layer of the object
+	 * @param _layer new layer to draw on
+	 */
+	public abstract void setLayer(int _layer);
+	
+	/**
+	 * <code>public int getLayer()</code></br></br>
+	 * Gets the current layer
+	 * @return the current layer of the object
+	 */
+	public abstract int getLayer();
 }
 
 /**
@@ -1110,75 +1882,85 @@ class DrawPanel extends JPanel {
 		g2.setColor(EGL2.backgroundColor);
 		g2.fillRect(0, 0, EGL2.getWindowWidth(), EGL2.getWindowHeight());
 		
-		// Rectangles
-		for (Rectangle rect : EGL2.rects) {
+		for (int i = 0; i < EGL2.numLayers; i++) {
 			
-			if (rect.visible) {
-				g2.setColor(rect.color);
-
-				if (rect.filled) {
-					g2.fillRect(rect.x, rect.y, rect.w, rect.h);
-				} else {
-					g2.drawRect(rect.x, rect.y, rect.w, rect.h);
+			for (Shape shape : EGL2.shapes.get(i)) {
+				
+				if (shape.isVisible()) {
+					
+					if (shape.isFilled()) {
+						
+						if (shape.getClass().getName() == "Rectangle") {
+							
+							g2.setColor(shape.getColor());
+							g2.fillRect(shape.getX(), shape.getY(), shape.getW(), shape.getH());
+						}
+						
+						if (shape.getClass().getName() == "Circle") {
+							
+							g2.setColor(shape.getColor());
+							g2.fillOval(shape.getX(), shape.getY(), shape.getW(), shape.getH());
+						}
+						
+						if (shape.getClass().getName() == "Gradient") {
+							
+							GradientPaint gp = new GradientPaint(shape.getX1(), shape.getY1(), shape.getColor1(),
+									shape.getX2(), shape.getY2(), shape.getColor2(), shape.isRepeatable());
+							
+							g2.setPaint(gp);
+							
+							if (shape.getGradientShape() == "rectangle") {
+								g2.fillRect(shape.getX(), shape.getY(), shape.getW(), shape.getH());
+							}
+							if (shape.getGradientShape() == "circle") {
+								g2.fillOval(shape.getX(), shape.getY(), shape.getW(), shape.getH());
+							}
+						}
+						
+						if (shape.getClass().getName() == "Image") {
+							
+							try {
+								
+								BufferedImage newImage = ImageIO.read(getClass().getResourceAsStream(shape.getFilepath()));
+								
+								// Initialize the width if it has no value (w and h start as -1)
+								if (shape.getW() == -1 && shape.getH() == -1) {
+									shape.setW(newImage.getWidth());
+									shape.setH(newImage.getHeight());
+								}
+								
+								g2.drawImage(newImage, shape.getX(), shape.getY(), shape.getW(), shape.getH(), null);
+								
+							} catch (IOException e) {
+								e.printStackTrace();
+							}
+						}
+					}
+					
+					if (!shape.isFilled()) {
+						
+						if (shape.getClass().getName() == "Rectangle") {
+							
+							g2.setColor(shape.getColor());
+							g2.drawRect(shape.getX(), shape.getY(), shape.getW(), shape.getH());
+						}
+						
+						if (shape.getClass().getName() == "Circle") {
+							
+							g2.setColor(shape.getColor());
+							g2.drawOval(shape.getX(), shape.getY(), shape.getW(), shape.getH());
+						}
+					}
 				}
 			}
 		}
 		
-		// Circles
-		for (Circle circ : EGL2.circles) {
-			
-			if (circ.isVisible()) {
-				g2.setColor(circ.color);
-
-				if (circ.filled) {
-					g2.fillOval(circ.x, circ.y, circ.w, circ.h);
-				} else {
-					g2.drawOval(circ.x, circ.y, circ.w, circ.h);
-				}
-			}
-		}
-		
-		// Lines
+		// Lines are not part of Shape class and don't have layers
 		for (Line line : EGL2.lines) {
 			
 			if (line.visible) {
 				g2.setColor(line.color);
 				g2.drawLine(line.x1, line.y1, line.x2, line.y2);
-			}
-		}
-		
-		// Gradients
-		for (Gradient grad : EGL2.gradients) {
-			GradientPaint gp = new GradientPaint(grad.x1, grad.y1, grad.color1,
-													grad.x2, grad.y2, grad.color2, grad.repeat);
-			if (grad.visible) {
-				g2.setPaint(gp);
-
-				if (grad.shape == "rectangle") {
-					g2.fillRect(grad.x, grad.y, grad.w, grad.h);
-				}
-				if (grad.shape == "circle") {
-					g2.fillOval(grad.x, grad.y, grad.w, grad.h);
-				}
-			}
-		}
-		
-		// Images
-		for (Image image : EGL2.images) {
-			
-			try {
-				BufferedImage newImage = ImageIO.read(getClass().getResourceAsStream(image.filepath));
-				
-				// Initialize the width if it has no value (w and h start as -1)
-				if (image.w == -1 && image.h == -1) {
-					image.w = newImage.getWidth();
-					image.h = newImage.getHeight();
-				}
-				
-				g2.drawImage(newImage, image.x, image.y, image.w, image.h, null);
-				
-			} catch (IOException e) {
-				e.printStackTrace();
 			}
 		}
 		
